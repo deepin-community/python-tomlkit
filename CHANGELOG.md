@@ -1,6 +1,87 @@
 # Change Log
 
-## [Unreleased]
+## [0.13.2] - 2024-08-14
+
+### Fixed
+
+- Fix deleting keys from an out-of-order table does not remove all table parts. ([#379](https://github.com/python-poetry/tomlkit/issues/379))
+
+## [0.13.1] - 2024-08-14
+
+### Fixed
+
+- Fix the `Table.is_super_table()` check for tables with dotted key as the only child. ([#374](https://github.com/python-poetry/tomlkit/issues/374))
+- Count table as a super table if it has children and all children are either tables or arrays of tables. ([#377](https://github.com/python-poetry/tomlkit/issues/377))
+
+## [0.13.0] - 2024-07-10
+
+### Changed
+
+- Expect a tomlkit-specific error instead of `TypeError` from a custom encoder. ([#355](https://github.com/python-poetry/tomlkit/issues/355))
+- Drop support for Python older than 3.8. Remove 3.7 from the CI matrix.
+
+### Fixed
+
+- Fix the incompatiblity with 3.13 because of the `datetime.replace()` change. ([#333](https://github.com/python-poetry/tomlkit/issues/333))
+- Revert the change of parsing out-of-order tables. ([#347](https://github.com/python-poetry/tomlkit/issues/347))
+- Keep the nested out-of-order table. ([#361](https://github.com/python-poetry/tomlkit/issues/361))
+
+
+## [0.12.5] - 2024-05-08
+
+### Fixed
+
+- Remove the extra minus sign added to the float value after calculation. ([#341](https://github.com/python-poetry/tomlkit/issues/341))
+- Fix unexpected newline added after accessing the out-of-order table. ([#343](https://github.com/python-poetry/tomlkit/issues/343))
+
+## [0.12.4] - 2024-02-27
+
+### Fixed
+
+- Support `|` and `|=` operator for tables, and support `+` and `+=` operator for arrays. ([#331](https://github.com/sdispater/tomlkit/issues/331))
+- Fix an index error when setting dotted keys in a table. ([#332](https://github.com/sdispater/tomlkit/issues/332))
+
+## [0.12.3] - 2023-11-15
+
+### Fixed
+
+- Improve the performance when parsing a table with nested dotted keys. ([#193](https://github.com/sdispater/tomlkit/issues/193))
+- Keep the newlines when replacing a table. ([#323](https://github.com/sdispater/tomlkit/issues/323))
+
+## [0.12.2] - 2023-11-02
+
+### Fixed
+
+- Fixed a bug that overwriting a sub table with a plain value raises an error. ([#313](https://github.com/sdispater/tomlkit/issues/313))
+- Correct the return type of integer division. ([#312](https://github.com/sdispater/tomlkit/issues/312))
+
+## [0.12.1] - 2023-07-27
+
+### Fixed
+
+- Make float and int hashable.
+
+## [0.12.0] - 2023-07-27
+
+### Added
+
+- Allow users to specify encoders for custom types. ([#296](https://github.com/sdispater/tomlkit/issues/296))
+
+### Fixed
+
+- Fix the incorrect sort when building a table with dotted keys.
+- Complete the methods required for integer and float items. ([#307](https://github.com/sdispater/tomlkit/issues/307))
+- Replace the deprecated usage of `datetime.utcnow()`. ([#308](https://github.com/sdispater/tomlkit/issues/308))
+- Minor performance improvements when iterating over the escape sequences. ([#304](https://github.com/sdispater/tomlkit/issues/304))
+
+## [0.11.8] - 2023-04-27
+
+### Fixed
+
+- Remove the extra indentations added when parsing nested sub-tables. ([#256](https://github.com/sdispater/tomlkit/issues/256))
+- Ignore the CRLF immediately following a multiple basic string opening. ([#262](https://github.com/sdispater/tomlkit/issues/262))
+- Stringifying subtables and nested tables in arrays of tables. ([#283](https://github.com/sdispater/tomlkit/issues/283))
+- Messed table structure when building a table with dotted keys. ([#284](https://github.com/sdispater/tomlkit/issues/284))
 
 ## [0.11.7] - 2023-03-27
 
@@ -339,7 +420,17 @@
 - Fixed handling of super tables with different sections.
 - Fixed raw strings escaping.
 
-[unreleased]: https://github.com/sdispater/tomlkit/compare/0.11.7...master
+[unreleased]: https://github.com/sdispater/tomlkit/compare/0.13.2...master
+[0.13.2]: https://github.com/sdispater/tomlkit/releases/tag/0.13.2
+[0.13.1]: https://github.com/sdispater/tomlkit/releases/tag/0.13.1
+[0.13.0]: https://github.com/sdispater/tomlkit/releases/tag/0.13.0
+[0.12.5]: https://github.com/sdispater/tomlkit/releases/tag/0.12.5
+[0.12.4]: https://github.com/sdispater/tomlkit/releases/tag/0.12.4
+[0.12.3]: https://github.com/sdispater/tomlkit/releases/tag/0.12.3
+[0.12.2]: https://github.com/sdispater/tomlkit/releases/tag/0.12.2
+[0.12.1]: https://github.com/sdispater/tomlkit/releases/tag/0.12.1
+[0.12.0]: https://github.com/sdispater/tomlkit/releases/tag/0.12.0
+[0.11.8]: https://github.com/sdispater/tomlkit/releases/tag/0.11.8
 [0.11.7]: https://github.com/sdispater/tomlkit/releases/tag/0.11.7
 [0.11.6]: https://github.com/sdispater/tomlkit/releases/tag/0.11.6
 [0.11.5]: https://github.com/sdispater/tomlkit/releases/tag/0.11.5
