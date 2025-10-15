@@ -2,11 +2,11 @@ Source: python-tomlkit
 Section: python
 Priority: optional
 Maintainer: Debian Python Team <team+python@tracker.debian.org>
-Uploaders: Scott Kitterman <scott@kitterman.com>
-Standards-Version: 4.6.2
+Uploaders: Emmanuel Arias <eamanu@debian.org>
+Standards-Version: 4.7.0
 Build-Depends:
- debhelper-compat (= 12),
- dh-python,
+ debhelper-compat (= 13),
+ dh-sequence-python3,
  pybuild-plugin-pyproject,
  python3-all,
  python3-sphinx,
@@ -16,6 +16,7 @@ Build-Depends:
 Homepage: https://github.com/sdispater/tomlkit
 Vcs-Git: https://salsa.debian.org/python-team/packages/tomlkit.git
 Vcs-Browser: https://salsa.debian.org/python-team/packages/tomlkit
+Rules-Requires-Root: no
 
 Package: python3-tomlkit
 Architecture: all

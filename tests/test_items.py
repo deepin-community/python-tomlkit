@@ -6,6 +6,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from datetime import timezone
 
 import pytest
 
@@ -103,7 +104,7 @@ def test_true_unwrap():
 
 
 def test_datetime_unwrap():
-    dt = datetime.utcnow()
+    dt = datetime.now(tz=timezone.utc)
     elementary_test(item(dt), datetime)
 
 
@@ -623,6 +624,10 @@ def test_integers_behave_like_ints():
     assert i == 33
     assert i.as_string() == "33"
 
+    i /= 2
+    assert i == 16.5
+    assert i.as_string() == "16.5"
+
     doc = parse("int = +34")
     doc["int"] += 1
 
@@ -684,7 +689,7 @@ def test_dates_behave_like_dates():
     assert i.as_string() == "2018-07-22"
 
     i += timedelta(days=1)
-    assert i == datetime(2018, 7, 23)
+    assert i == date(2018, 7, 23)
     assert i.as_string() == "2018-07-23"
 
     i -= timedelta(days=2)
@@ -692,7 +697,7 @@ def test_dates_behave_like_dates():
     assert i.as_string() == "2018-07-21"
 
     i = i.replace(year=2019)
-    assert i == datetime(2019, 7, 21)
+    assert i == date(2019, 7, 21)
     assert i.as_string() == "2019-07-21"
 
     doc = parse("dt = 2018-07-22 # Comment")
@@ -946,3 +951,58 @@ def test_copy_copy():
 )
 def test_escape_key(key_str, escaped):
     assert api.key(key_str).as_string() == escaped
+
+
+def test_custom_encoders():
+    import decimal
+
+    @api.register_encoder
+    def encode_decimal(obj):
+        if isinstance(obj, decimal.Decimal):
+            return api.float_(str(obj))
+        raise TypeError
+
+    assert api.item(decimal.Decimal("1.23")).as_string() == "1.23"
+
+    with pytest.raises(TypeError):
+        api.item(object())
+
+    assert api.dumps({"foo": decimal.Decimal("1.23")}) == "foo = 1.23\n"
+    api.unregister_encoder(encode_decimal)
+
+
+def test_no_extra_minus_sign():
+    doc = parse("a = -1")
+    assert doc.as_string() == "a = -1"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +1"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = -1"
+
+    doc = parse("a = -1.5")
+    assert doc.as_string() == "a = -1.5"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +1.5"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = -1.5"
+
+
+def test_serialize_table_with_dotted_key():
+    child = api.table()
+    child.add(api.key(("b", "c")), 1)
+    parent = api.table()
+    parent.add("a", child)
+    assert parent.as_string() == "[a]\nb.c = 1\n"
+
+
+def test_not_showing_parent_header_for_super_table():
+    doc = api.document()
+
+    def add_table(parent, name):
+        parent.add(name, api.table())
+        return parent[name]
+
+    root = add_table(doc, "root")
+    add_table(root, "first")
+    add_table(root, "second")
+    assert doc.as_string() == "[root.first]\n\n[root.second]\n"

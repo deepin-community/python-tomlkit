@@ -1,3 +1,64 @@
+python-tomlkit (0.13.2-1) unstable; urgency=medium
+
+  * New upstream version.
+
+ -- Emmanuel Arias <eamanu@debian.org>  Thu, 22 Aug 2024 06:40:46 -0300
+
+python-tomlkit (0.13.0-1) unstable; urgency=medium
+
+  * New upstream version.
+
+ -- Emmanuel Arias <eamanu@debian.org>  Fri, 09 Aug 2024 21:20:49 -0300
+
+python-tomlkit (0.12.5-1) unstable; urgency=medium
+
+  [ Scott Kitterman ]
+  * Remove myself from uploaders
+
+  [ Emmanuel Arias ]
+  * Add my self as Uploader.
+  * New upstream version
+  * Standards-Version: 4.7.0 (routine-update)
+  * debhelper-compat 13 (routine-update)
+  * Remove trailing whitespace in debian/copyright (routine-update)
+  * Build-Depends: s/dh-python/dh-sequence-python3/ (routine-update)
+  * Set field Upstream-Name in debian/copyright (routine-update)
+  * d/upstream: Add metadata file.
+
+ -- Emmanuel Arias <eamanu@debian.org>  Fri, 17 May 2024 21:28:45 -0300
+
+python-tomlkit (0.12.4-1) unstable; urgency=medium
+
+  * Add Rules-Requires-Root no
+  * New upstream release
+
+ -- Scott Kitterman <scott@kitterman.com>  Sat, 02 Mar 2024 10:42:57 -0500
+
+python-tomlkit (0.12.3-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Scott Kitterman <scott@kitterman.com>  Fri, 29 Dec 2023 14:14:18 -0500
+
+python-tomlkit (0.12.1-1) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Scott Kitterman <scott@kitterman.com>  Tue, 01 Aug 2023 13:42:42 -0400
+
+python-tomlkit (0.12.1-1~exp1) experimental; urgency=medium
+
+  * New upstream release
+    - Refresh/update patches
+
+ -- Scott Kitterman <scott@kitterman.com>  Mon, 31 Jul 2023 12:34:21 -0400
+
+python-tomlkit (0.11.8-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Scott Kitterman <scott@kitterman.com>  Tue, 13 Jun 2023 00:29:54 -0400
+
 python-tomlkit (0.11.7-1) unstable; urgency=medium
 
   * New upstream release
