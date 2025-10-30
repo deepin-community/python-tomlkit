@@ -4,11 +4,16 @@ export PYBUILD_NAME=tomlkit
 export PYBUILD_TEST_PYTEST=1
 
 %:
-	dh $@ --with python3 --buildsystem=pybuild
+	dh $@ --buildsystem=pybuild
 
 override_dh_installdocs:
 	PYTHONPATH=.:$PYTHONPATH sphinx-build -b text docs debian
 	dh_installdocs
+
+# The original source tarball contains a changelog whose mtime is the epoch,
+# which dak would reject if it found it in our binary package.
+execute_after_dh_installchangelogs:
+	touch -d"@$$(dpkg-parsechangelog -STimestamp)" debian/python3-tomlkit/usr/share/doc/python3-tomlkit/changelog
 
 override_dh_auto_clean:
 	rm -f debian/*.txt

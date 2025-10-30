@@ -18,15 +18,18 @@ from tomlkit.api import load
 from tomlkit.api import loads
 from tomlkit.api import nl
 from tomlkit.api import parse
+from tomlkit.api import register_encoder
 from tomlkit.api import string
 from tomlkit.api import table
 from tomlkit.api import time
+from tomlkit.api import unregister_encoder
 from tomlkit.api import value
 from tomlkit.api import ws
 
 
-__version__ = "0.11.7"
+__version__ = "0.13.3"
 __all__ = [
+    "TOMLDocument",
     "aot",
     "array",
     "boolean",
@@ -46,10 +49,11 @@ __all__ = [
     "loads",
     "nl",
     "parse",
+    "register_encoder",
     "string",
     "table",
     "time",
-    "TOMLDocument",
+    "unregister_encoder",
     "value",
     "ws",
 ]

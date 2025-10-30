@@ -1,12 +1,8 @@
+from __future__ import annotations
+
 import datetime
 import re
 import string
-
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Type
-from typing import Union
 
 from tomlkit._compat import decode
 from tomlkit._utils import RFC_3339_LOOSE
@@ -64,11 +60,11 @@ class Parser:
     Parser for TOML documents.
     """
 
-    def __init__(self, string: str) -> None:
+    def __init__(self, string: str | bytes) -> None:
         # Input to parse
         self._src = Source(decode(string))
 
-        self._aot_stack: List[Key] = []
+        self._aot_stack: list[Key] = []
 
     @property
     def _state(self):
@@ -92,14 +88,14 @@ class Parser:
         """
         return self._src.extract()
 
-    def inc(self, exception: Optional[Type[ParseError]] = None) -> bool:
+    def inc(self, exception: type[ParseError] | None = None) -> bool:
         """
         Increments the parser if the end of the input has not been reached.
         Returns whether or not it was able to advance.
         """
         return self._src.inc(exception=exception)
 
-    def inc_n(self, n: int, exception: Optional[Type[ParseError]] = None) -> bool:
+    def inc_n(self, n: int, exception: type[ParseError] | None = None) -> bool:
         """
         Increments the parser by n characters
         if the end of the input has not been reached.
@@ -205,7 +201,7 @@ class Parser:
 
         return parent_parts == child_parts[: len(parent_parts)]
 
-    def _parse_item(self) -> Optional[Tuple[Optional[Key], Item]]:
+    def _parse_item(self) -> tuple[Key | None, Item] | None:
         """
         Attempts to parse the next item and returns it, along with its key
         if the item is value-like.
@@ -241,7 +237,7 @@ class Parser:
 
         return self._parse_key_value(True)
 
-    def _parse_comment_trail(self, parse_trail: bool = True) -> Tuple[str, str, str]:
+    def _parse_comment_trail(self, parse_trail: bool = True) -> tuple[str, str, str]:
         """
         Returns (comment_ws, comment, trail)
         If there is no comment, comment_ws and comment will
@@ -268,7 +264,7 @@ class Parser:
                 # The comment itself
                 while not self.end() and not self._current.is_nl():
                     code = ord(self._current)
-                    if code == CHR_DEL or code <= CTRL_CHAR_LIMIT and code != CTRL_I:
+                    if code == CHR_DEL or (code <= CTRL_CHAR_LIMIT and code != CTRL_I):
                         raise self.parse_error(InvalidControlChar, code, "comments")
 
                     if not self.inc():
@@ -302,7 +298,7 @@ class Parser:
 
         return comment_ws, comment, trail
 
-    def _parse_key_value(self, parse_comment: bool = False) -> Tuple[Key, Item]:
+    def _parse_key_value(self, parse_comment: bool = False) -> tuple[Key, Item]:
         # Leading indent
         self.mark()
 
@@ -485,7 +481,7 @@ class Parser:
                             raw,
                         )
                     except ValueError:
-                        raise self.parse_error(InvalidDateTimeError)
+                        raise self.parse_error(InvalidDateTimeError) from None
 
                 if m.group(1):
                     try:
@@ -517,7 +513,7 @@ class Parser:
                             raw + time_part,
                         )
                     except ValueError:
-                        raise self.parse_error(InvalidDateError)
+                        raise self.parse_error(InvalidDateError) from None
 
                 if m.group(5):
                     try:
@@ -533,7 +529,7 @@ class Parser:
                             raw,
                         )
                     except ValueError:
-                        raise self.parse_error(InvalidTimeError)
+                        raise self.parse_error(InvalidTimeError) from None
 
             item = self._parse_number(raw, trivia)
             if item is not None:
@@ -564,7 +560,7 @@ class Parser:
         # Consume opening bracket, EOF here is an issue (middle of array)
         self.inc(exception=UnexpectedEofError)
 
-        elems: List[Item] = []
+        elems: list[Item] = []
         prev_value = None
         while True:
             # consume whitespace
@@ -599,7 +595,11 @@ class Parser:
             # consume comma
             if prev_value and self._current == ",":
                 self.inc(exception=UnexpectedEofError)
-                elems.append(Whitespace(","))
+                # If the previous item is Whitespace, add to it
+                if isinstance(elems[-1], Whitespace):
+                    elems[-1]._s = elems[-1].s + ","
+                else:
+                    elems.append(Whitespace(","))
                 prev_value = False
                 continue
 
@@ -640,10 +640,8 @@ class Parser:
                     self.inc()
                     break
 
-                if (
-                    trailing_comma is False
-                    or trailing_comma is None
-                    and self._current == ","
+                if trailing_comma is False or (
+                    trailing_comma is None and self._current == ","
                 ):
                     # Either the previous key-value pair was not followed by a comma
                     # or the table has an unexpected leading comma.
@@ -671,7 +669,7 @@ class Parser:
 
         return InlineTable(elems, Trivia())
 
-    def _parse_number(self, raw: str, trivia: Trivia) -> Optional[Item]:
+    def _parse_number(self, raw: str, trivia: Trivia) -> Item | None:
         # Leading zeros are not allowed
         sign = ""
         if raw.startswith(("+", "-")):
@@ -679,10 +677,8 @@ class Parser:
             raw = raw[1:]
 
         if len(raw) > 1 and (
-            raw.startswith("0")
-            and not raw.startswith(("0.", "0o", "0x", "0b", "0e"))
-            or sign
-            and raw.startswith(".")
+            (raw.startswith("0") and not raw.startswith(("0.", "0o", "0x", "0b", "0e")))
+            or (sign and raw.startswith("."))
         ):
             return None
 
@@ -707,10 +703,8 @@ class Parser:
         if "_" in clean:
             return None
 
-        if (
-            clean.endswith(".")
-            or not clean.startswith("0x")
-            and clean.split("e", 1)[0].endswith(".")
+        if clean.endswith(".") or (
+            not clean.startswith("0x") and clean.split("e", 1)[0].endswith(".")
         ):
             return None
 
@@ -803,9 +797,17 @@ class Parser:
         value = ""
 
         # A newline immediately following the opening delimiter will be trimmed.
-        if delim.is_multiline() and self._current == "\n":
-            # consume the newline, EOF here is an issue (middle of string)
-            self.inc(exception=UnexpectedEofError)
+        if delim.is_multiline():
+            if self._current == "\n":
+                # consume the newline, EOF here is an issue (middle of string)
+                self.inc(exception=UnexpectedEofError)
+            else:
+                cur = self._current
+                with self._state(restore=True):
+                    if self.inc():
+                        cur += self._current
+                if cur == "\r\n":
+                    self.inc_n(2, exception=UnexpectedEofError)
 
         escaped = False  # whether the previous key was ESCAPE
         while True:
@@ -813,14 +815,15 @@ class Parser:
             if (
                 delim.is_singleline()
                 and not escaped
-                and (code == CHR_DEL or code <= CTRL_CHAR_LIMIT and code != CTRL_I)
+                and (code == CHR_DEL or (code <= CTRL_CHAR_LIMIT and code != CTRL_I))
             ) or (
                 delim.is_multiline()
                 and not escaped
                 and (
                     code == CHR_DEL
-                    or code <= CTRL_CHAR_LIMIT
-                    and code not in [CTRL_I, CTRL_J, CTRL_M]
+                    or (
+                        code <= CTRL_CHAR_LIMIT and code not in [CTRL_I, CTRL_J, CTRL_M]
+                    )
                 )
             ):
                 raise self.parse_error(InvalidControlChar, code, "strings")
@@ -881,8 +884,8 @@ class Parser:
                 self.inc(exception=UnexpectedEofError)
 
     def _parse_table(
-        self, parent_name: Optional[Key] = None, parent: Optional[Table] = None
-    ) -> Tuple[Key, Union[Table, AoT]]:
+        self, parent_name: Key | None = None, parent: Table | None = None
+    ) -> tuple[Key, Table | AoT]:
         """
         Parses a table element.
         """
@@ -959,7 +962,7 @@ class Parser:
                 # So we have to create the parent tables
                 table = Table(
                     Container(True),
-                    Trivia(indent, cws, comment, trail),
+                    Trivia("", cws, comment, trail),
                     is_aot and name_parts[0] in self._aot_stack,
                     is_super_table=True,
                     name=name_parts[0].key,
@@ -977,9 +980,9 @@ class Parser:
                         is_aot and i == len(name_parts) - 2,
                         is_super_table=i < len(name_parts) - 2,
                         name=_name.key,
-                        display_name=full_key.as_string()
-                        if i == len(name_parts) - 2
-                        else None,
+                        display_name=(
+                            full_key.as_string() if i == len(name_parts) - 2 else None
+                        ),
                     ),
                 )
 
@@ -1026,7 +1029,7 @@ class Parser:
                         InternalParserError,
                         "_parse_item() returned None on a non-bracket character.",
                     )
-
+        table.value._validate_out_of_order_table()
         if isinstance(result, Null):
             result = table
 
@@ -1035,7 +1038,7 @@ class Parser:
 
         return key, result
 
-    def _peek_table(self) -> Tuple[bool, Key]:
+    def _peek_table(self) -> tuple[bool, Key]:
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.
@@ -1099,7 +1102,7 @@ class Parser:
                 break
             return buf
 
-    def _peek_unicode(self, is_long: bool) -> Tuple[Optional[str], Optional[str]]:
+    def _peek_unicode(self, is_long: bool) -> tuple[str | None, str | None]:
         """
         Peeks ahead non-intrusively by cloning then restoring the
         initial state of the parser.

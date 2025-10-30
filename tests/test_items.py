@@ -6,6 +6,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from datetime import timezone
 
 import pytest
 
@@ -103,7 +104,7 @@ def test_true_unwrap():
 
 
 def test_datetime_unwrap():
-    dt = datetime.utcnow()
+    dt = datetime.now(tz=timezone.utc)
     elementary_test(item(dt), datetime)
 
 
@@ -126,6 +127,19 @@ def test_aot_unwrap():
             vu = du[ku]
             assert_is_ppo(ku, str)
             assert_is_ppo(vu, str)
+
+
+def test_aot_set_item():
+    d = item(["A", {"b": "B"}, ["c", "D"]])
+    d[0] = "C"
+    assert isinstance(d[0], String)
+    assert d[0] == "C"
+    d[1]["b"] = "D"
+    assert isinstance(d[1], InlineTable)
+    assert d[1]["b"] == "D"
+    d[0] = ["c", "C"]
+    assert isinstance(d[0], Array)
+    assert d[0][1] == "C"
 
 
 def test_time_unwrap():
@@ -623,6 +637,10 @@ def test_integers_behave_like_ints():
     assert i == 33
     assert i.as_string() == "33"
 
+    i /= 2
+    assert i == 16.5
+    assert i.as_string() == "16.5"
+
     doc = parse("int = +34")
     doc["int"] += 1
 
@@ -684,7 +702,7 @@ def test_dates_behave_like_dates():
     assert i.as_string() == "2018-07-22"
 
     i += timedelta(days=1)
-    assert i == datetime(2018, 7, 23)
+    assert i == date(2018, 7, 23)
     assert i.as_string() == "2018-07-23"
 
     i -= timedelta(days=2)
@@ -692,7 +710,7 @@ def test_dates_behave_like_dates():
     assert i.as_string() == "2018-07-21"
 
     i = i.replace(year=2019)
-    assert i == datetime(2019, 7, 21)
+    assert i == date(2019, 7, 21)
     assert i.as_string() == "2019-07-21"
 
     doc = parse("dt = 2018-07-22 # Comment")
@@ -910,6 +928,8 @@ value = false
 """
 
     content = parse(s)
+    assert content["foo"]["value"] is False
+    assert isinstance(content["foo"].item("value"), Bool)
 
     assert {"foo": {"value": False}} == content
     assert {"value": False} == content["foo"]
@@ -946,3 +966,122 @@ def test_copy_copy():
 )
 def test_escape_key(key_str, escaped):
     assert api.key(key_str).as_string() == escaped
+
+
+def test_custom_encoders():
+    import decimal
+
+    @api.register_encoder
+    def encode_decimal(obj):
+        if isinstance(obj, decimal.Decimal):
+            return api.float_(str(obj))
+        raise TypeError
+
+    assert api.item(decimal.Decimal("1.23")).as_string() == "1.23"
+
+    with pytest.raises(TypeError):
+        api.item(object())
+
+    assert api.dumps({"foo": decimal.Decimal("1.23")}) == "foo = 1.23\n"
+    api.unregister_encoder(encode_decimal)
+
+
+def test_no_extra_minus_sign():
+    doc = parse("a = -1")
+    assert doc.as_string() == "a = -1"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +1"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = -1"
+
+    doc = parse("a = -1.5")
+    assert doc.as_string() == "a = -1.5"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = +1.5"
+    doc["a"] *= -1
+    assert doc.as_string() == "a = -1.5"
+
+
+def test_serialize_table_with_dotted_key():
+    child = api.table()
+    child.add(api.key(("b", "c")), 1)
+    parent = api.table()
+    parent.add("a", child)
+    assert parent.as_string() == "[a]\nb.c = 1\n"
+
+
+def test_not_showing_parent_header_for_super_table():
+    doc = api.document()
+
+    def add_table(parent, name):
+        parent.add(name, api.table())
+        return parent[name]
+
+    root = add_table(doc, "root")
+    add_table(root, "first")
+    add_table(root, "second")
+    assert doc.as_string() == "[root.first]\n\n[root.second]\n"
+
+
+def test_removal_of_arrayitem_with_extra_whitespace():
+    expected = 'x = [\n    "bar",\n]'
+    doc = parse('x = [\n    "foo" ,#spam\n    "bar",\n]')
+    x = doc["x"]
+    assert isinstance(x, Array)
+    x.remove("foo")
+    docstr = doc.as_string()
+    parse(docstr)
+    assert docstr == expected
+
+
+def test_badly_formatted_array_and_item_removal():
+    expected = """
+x = [
+    '0'#a
+,#b
+
+    # comment
+'1' #c
+    , #d
+# another comment
+'2'
+ # yet another comment
+,'3', # f
+ # comments here
+'4'#g
+#    comments there
+ ,'5' #h
+    #   comments everywhere
+ # so many comments
+,'6' ,
+      # you get a comment
+# you get a comment
+   '7' ,#j
+# everybody gets a comment!!!
+ "8"#c
+,"9",  \n  "10"
+]
+"""
+    assert expected == parse(expected).as_string()
+    for i in range(11):
+        doc = parse(expected)
+        x = doc["x"]
+        assert isinstance(x, Array)
+        x.remove(str(i))
+        parse(doc.as_string())
+
+
+def test_array_item_removal_newline_restore_next():
+    expected = "x = [\n  '0',\n    '2'\n]"
+
+    docstr = "x = [\n  '0',\n    '1','2'\n]"
+    doc = parse(docstr)
+    doc["x"].remove("1")
+    assert doc.as_string() == expected
+    parse(doc.as_string())
+
+    docstr = "x = [\n  '0',\n    '1',  '2'\n]"
+    doc = parse(docstr)
+    doc["x"].remove("1")
+    assert doc.as_string() == expected
+    parse(doc.as_string())

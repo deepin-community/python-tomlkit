@@ -15,6 +15,7 @@ from tomlkit import ws
 from tomlkit._utils import _utc
 from tomlkit.api import document
 from tomlkit.exceptions import NonExistentKey
+from tomlkit.toml_document import TOMLDocument
 
 
 def test_document_is_a_dict(example):
@@ -163,9 +164,9 @@ name = "foo"
     doc = parse(content)
     unwrapped = doc.unwrap()
     assert_is_ppo(unwrapped, dict)
-    assert_is_ppo(list(unwrapped.keys())[0], str)
+    assert_is_ppo(next(iter(unwrapped)), str)
     assert_is_ppo(unwrapped["tool"], dict)
-    assert_is_ppo(list(unwrapped["tool"].keys())[0], str)
+    assert_is_ppo(next(iter(unwrapped["tool"])), str)
     assert_is_ppo(unwrapped["tool"]["poetry"]["name"], str)
 
 
@@ -676,6 +677,32 @@ z = 3
     assert json.dumps(document) == '{"a": {"x": 1}, "c": {"z": 3}}'
 
 
+def test_update_nested_out_of_order_table():
+    doc = parse("""\
+[root1.root2.a.b.c]
+  value = 2
+[WALRUS]
+  goo = "gjob"
+[root1.root2.x]
+  value = 4
+""")
+    doc["root1"]["root2"]["a"].add("tmp", "hi")
+    assert (
+        doc.as_string()
+        == """\
+[root1.root2.a]
+tmp = "hi"
+
+[root1.root2.a.b.c]
+  value = 2
+[WALRUS]
+  goo = "gjob"
+[root1.root2.x]
+  value = 4
+"""
+    )
+
+
 def test_updating_nested_value_keeps_correct_indent():
     content = """
 [Key1]
@@ -788,6 +815,7 @@ b = 2
     assert (
         doc.as_string()
         == """bar = 42
+
 [foo]
 a = 1
 
@@ -1030,3 +1058,238 @@ def test_nested_table_update_display_name():
     z = 3
     """
     assert doc.as_string() == dedent(expected)
+
+
+def test_build_table_with_dotted_key():
+    doc = tomlkit.document()
+    data = {
+        "a.b.c": 1,
+        "a.b.d": 2,
+        "a": {"c": {"foo": "bar"}},
+        "a.d.e": 3,
+    }
+
+    for key, value in data.items():
+        if "." not in key:
+            doc.append(key, value)
+        else:
+            doc.append(tomlkit.key(key.split(".")), value)
+
+    expected = """\
+a.b.c = 1
+a.b.d = 2
+a.d.e = 3
+
+[a.c]
+foo = "bar"
+"""
+    assert doc.as_string() == expected
+    assert json.loads(json.dumps(doc)) == {
+        "a": {"b": {"c": 1, "d": 2}, "d": {"e": 3}, "c": {"foo": "bar"}}
+    }
+
+
+def test_parse_subtables_no_extra_indent():
+    expected = """\
+[a]
+    [a.b.c]
+        foo = 1
+
+    [a.b.d]
+        bar = 2
+"""
+    doc = parse(expected)
+    assert doc.as_string() == expected
+
+
+def test_item_preserves_the_order():
+    t = tomlkit.inline_table()
+    t.update({"a": 1, "b": 2})
+    doc = {"name": "foo", "table": t, "age": 42}
+    expected = """\
+name = "foo"
+table = {a = 1, b = 2}
+age = 42
+"""
+    assert tomlkit.dumps(doc) == expected
+
+
+def test_delete_out_of_order_table_key():
+    content = """\
+[foo]
+name = "foo"
+
+[bar.a.b]
+name = "bar-a-b"
+
+[foo.a]
+name = "foo-a"
+
+[bar.a]
+name = "bar-a"
+
+[baz]
+name = "baz"
+
+[bar.a.c]
+name = "bar-a-c"
+"""
+    doc = parse(content)
+    del doc["bar"]["a"]
+    assert (
+        doc.as_string()
+        == """\
+[foo]
+name = "foo"
+
+[foo.a]
+name = "foo-a"
+
+[baz]
+name = "baz"
+
+"""
+    )
+
+
+def test_overwrite_out_of_order_table_key():
+    content = """\
+[foo]
+name = "foo"
+
+[bar.a.b]
+name = "bar-a-b"
+
+[foo.a]
+name = "foo-a"
+
+[bar.a]
+name = "bar-a"
+
+[baz]
+name = "baz"
+
+[bar.a.c]
+name = "bar-a-c"
+"""
+    doc = parse(content)
+    doc["bar"]["a"] = {"name": "bar-a-updated"}
+    assert (
+        doc.as_string()
+        == """\
+[foo]
+name = "foo"
+
+[bar.a]
+name = "bar-a-updated"
+[foo.a]
+name = "foo-a"
+
+[baz]
+name = "baz"
+
+"""
+    )
+
+
+def test_set_default_int():
+    with pytest.raises(TypeError):
+        TOMLDocument().setdefault(4, 5)
+
+
+def test_overwriting_out_of_order_table():
+    content = """\
+[foo.bar]
+open = false
+
+[foo]
+x = 1
+y = 2
+"""
+    doc = parse(content)
+    doc["foo"]["z"] = 3
+    assert (
+        doc.as_string()
+        == """\
+[foo.bar]
+open = false
+
+[foo]
+x = 1
+y = 2
+z = 3
+"""
+    )
+
+    doc["foo"]["bar"] = tomlkit.inline_table()
+    doc["foo"]["bar"]["open"] = True
+    assert (
+        doc.as_string()
+        == """\
+[foo]
+x = 1
+y = 2
+z = 3
+bar = {open = true}
+"""
+    )
+
+
+def test_delete_key_from_out_of_order_table():
+    content = """\
+[foo.bar.baz]
+a = 1
+[foo.bar]
+b = 2
+[other]
+c = 3
+[foo.tee]
+d = 4
+"""
+    doc = parse(content)
+    del doc["foo"]["bar"]
+    assert (
+        doc.as_string()
+        == """\
+[other]
+c = 3
+[foo.tee]
+d = 4
+"""
+    )
+
+
+def test_parse_aot_without_ending_newline():
+    content = '''\
+[[products]]
+name = "Hammer"
+
+[foo]
+
+[bar]
+
+[[products]]
+name = "Nail"'''
+    doc = parse(content)
+    assert (
+        doc.as_string()
+        == """\
+[[products]]
+name = "Hammer"
+
+[[products]]
+name = "Nail"
+[foo]
+
+[bar]
+
+"""
+    )
+    assert doc == {
+        "products": [
+            {"name": "Hammer"},
+            {"name": "Nail"},
+        ],
+        "foo": {},
+        "bar": {},
+    }

@@ -1,25 +1,29 @@
 Source: python-tomlkit
+Standards-Version: 4.7.2
+Maintainer: Debian Python Team <team+python@tracker.debian.org>
+Uploaders:
+ Emmanuel Arias <eamanu@debian.org>,
 Section: python
 Priority: optional
-Maintainer: Debian Python Team <team+python@tracker.debian.org>
-Uploaders: Scott Kitterman <scott@kitterman.com>
-Standards-Version: 4.6.2
 Build-Depends:
- debhelper-compat (= 12),
- dh-python,
+ debhelper-compat (= 13),
+ dh-sequence-python3,
  pybuild-plugin-pyproject,
  python3-all,
  python3-sphinx,
  python3-poetry-core,
  python3-pytest,
  python3-yaml,
-Homepage: https://github.com/sdispater/tomlkit
-Vcs-Git: https://salsa.debian.org/python-team/packages/tomlkit.git
 Vcs-Browser: https://salsa.debian.org/python-team/packages/tomlkit
+Vcs-Git: https://salsa.debian.org/python-team/packages/tomlkit.git
+Homepage: https://github.com/sdispater/tomlkit
+Rules-Requires-Root: no
 
 Package: python3-tomlkit
 Architecture: all
-Depends: ${misc:Depends}, ${python3:Depends}
+Depends:
+ ${misc:Depends},
+ ${python3:Depends},
 Description: style-preserving TOML library for Python
  TOML Kit is a 1.0.0rc1-compliant TOML (Tom's Obvious, Minimal Language)
  library.
